@@ -10,5 +10,13 @@
 	},
 	"observability": {
 		"enabled": true
+	},
+	// GITHUB_TOKEN is a secret, not a var: set it with
+	// `wrangler secret put GITHUB_TOKEN` for production, and in a local
+	// (gitignored) `.dev.vars` file for `wrangler dev`/`astro dev`. Never
+	// commit the token itself.
+	"vars": {
+		"GITHUB_REPO": "kfir-braun/BTNH",
+		"GITHUB_BRANCH": "master"
 	}
 }

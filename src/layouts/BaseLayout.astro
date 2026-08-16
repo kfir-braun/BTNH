@@ -1,6 +1,5 @@
 ---
 import Nav from '../components/Nav.astro';
-import ChatWidget from '../components/ChatWidget';
 
 interface Props {
 	title: string;
@@ -24,7 +23,6 @@ const { title, description = 'BuildTech: New Horizons — base building for GTNH
 		<main>
 			<slot />
 		</main>
-		<ChatWidget client:load />
 	</body>
 </html>
 

@@ -1,0 +1,29 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const entries = await getCollection('qna');
+const rendered = await Promise.all(
+	entries
+		.sort((a, b) => b.data.answeredAt.localeCompare(a.data.answeredAt))
+		.map(async (entry) => ({ entry, Content: (await render(entry)).Content })),
+);
+---
+
+<BaseLayout title="Q&A" description="Answered base-building questions from the GTNH community.">
+	<h1>Q&amp;A</h1>
+	<p>
+		Answered questions from players, most recent first. Have one of your own?
+		<a href="/qna/ask">Ask a question</a> — answers are added by hand (no live AI chat, this
+		site runs on a free tier), so it may take a bit.
+	</p>
+	{rendered.length === 0 && <p>No answered questions yet — be the first to ask.</p>}
+	{
+		rendered.map(({ entry, Content }) => (
+			<article>
+				<h2>{entry.data.question}</h2>
+				<Content />
+			</article>
+		))
+	}
+</BaseLayout>
