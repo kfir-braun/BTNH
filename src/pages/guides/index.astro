@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const sections = [
+	{ slug: 'layouts', title: 'Layouts', description: 'Room and multiblock planning by GT voltage tier.' },
+	{ slug: 'infrastructure', title: 'Infrastructure', description: 'Power, logistics/pipes/cables, automation backbone.' },
+	{ slug: 'aesthetics', title: 'Aesthetics', description: 'Build showcases and style guides.' },
+	{ slug: 'efficiency', title: 'Efficiency', description: 'Space, throughput, and energy optimization.' },
+];
+---
+
+<BaseLayout title="Guides">
+	<h1>Guides</h1>
+	<ul>
+		{
+			sections.map((s) => (
+				<li>
+					<a href={`/guides/${s.slug}`}>{s.title}</a> — {s.description}
+				</li>
+			))
+		}
+	</ul>
+</BaseLayout>

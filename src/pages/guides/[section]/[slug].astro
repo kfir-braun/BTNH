@@ -1,0 +1,25 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+	const allGuides = await getCollection('guides');
+	return allGuides.map((entry) => {
+		const [section, slug] = entry.id.split('/');
+		return {
+			params: { section, slug },
+			props: { entry },
+		};
+	});
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<BaseLayout title={entry.data.title} description={entry.data.description}>
+	<p><a href={`/guides/${entry.data.section}`}>&larr; {entry.data.section}</a></p>
+	<h1>{entry.data.title}</h1>
+	{entry.data.voltageTier && <p><em>Voltage tier: {entry.data.voltageTier}</em></p>}
+	<Content />
+</BaseLayout>

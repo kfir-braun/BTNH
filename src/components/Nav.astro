@@ -1,0 +1,46 @@
+---
+const links = [
+	{ href: '/', label: 'Home' },
+	{ href: '/guides', label: 'Guides' },
+	{ href: '/reference', label: 'Reference' },
+	{ href: '/showcase', label: 'Showcase' },
+];
+---
+
+<nav class="site-nav">
+	<a class="brand" href="/">BTNH</a>
+	<ul>
+		{
+			links.map((link) => (
+				<li>
+					<a href={link.href}>{link.label}</a>
+				</li>
+			))
+		}
+	</ul>
+</nav>
+
+<style>
+	.site-nav {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 1rem 1.5rem;
+		border-bottom: 1px solid #2a2a2a;
+	}
+	.brand {
+		font-weight: 700;
+		text-decoration: none;
+		color: inherit;
+	}
+	ul {
+		display: flex;
+		gap: 1.25rem;
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	a {
+		color: inherit;
+	}
+</style>

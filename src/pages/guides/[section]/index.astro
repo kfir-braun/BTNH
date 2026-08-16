@@ -1,0 +1,35 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+	const sections = ['layouts', 'infrastructure', 'aesthetics', 'efficiency'];
+	return sections.map((section) => ({ params: { section } }));
+}
+
+const sectionTitles: Record<string, string> = {
+	layouts: 'Layouts',
+	infrastructure: 'Infrastructure',
+	aesthetics: 'Aesthetics',
+	efficiency: 'Efficiency',
+};
+
+const { section } = Astro.params;
+const allGuides = await getCollection('guides');
+const guides = allGuides.filter((g) => g.data.section === section);
+---
+
+<BaseLayout title={sectionTitles[section!]}>
+	<p><a href="/guides">&larr; Guides</a></p>
+	<h1>{sectionTitles[section!]}</h1>
+	{guides.length === 0 && <p>No guides yet in this section.</p>}
+	<ul>
+		{
+			guides.map((g) => (
+				<li>
+					<a href={`/guides/${section}/${g.id.split('/').pop()}`}>{g.data.title}</a> — {g.data.description}
+				</li>
+			))
+		}
+	</ul>
+</BaseLayout>

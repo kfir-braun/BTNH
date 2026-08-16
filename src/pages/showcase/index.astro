@@ -1,0 +1,28 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const entries = await getCollection('showcase');
+const rendered = await Promise.all(
+	entries.map(async (entry) => ({ entry, Content: (await render(entry)).Content })),
+);
+---
+
+<BaseLayout title="Showcase">
+	<h1>Showcase</h1>
+	<p>
+		Curated builds below. Community submissions (upload form → review queue) aren't wired up yet
+		— see <code>BTNH/CLAUDE.md</code> for the planned R2/D1-backed submission flow.
+	</p>
+	{
+		rendered.map(({ entry, Content }) => (
+			<article>
+				<h2>{entry.data.title}</h2>
+				<p>
+					<em>by {entry.data.builder}</em>
+				</p>
+				<Content />
+			</article>
+		))
+	}
+</BaseLayout>
