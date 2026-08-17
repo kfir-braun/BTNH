@@ -95,6 +95,85 @@ The modded Minecraft community — GTNH players generally, not segmented
 into new-vs-veteran tiers. The site owner is also a player and part of
 that audience, not building this purely for third parties.
 
+## OpenClaw + Discord coordination
+The site owner, Claude Code, and OpenClaw coordinate on this project
+(Q&A queue triage, content planning, scheduling rollouts) through a
+Discord server, not through this repo alone. This is workspace-level
+infrastructure (OpenClaw is not BTNH-specific — it's the owner's general
+personal agent), but it's documented here because BTNH/Q&A was the
+motivating use case and this is the project it'll be actively used from.
+
+- **Server**: "KbWORKS's server" (guild ID `1537590231643983992`). Bot:
+  `@clawed` (application/user ID `1537593998812643368`).
+- **Locking**: `channels.discord.groupPolicy` = `"allowlist"` with only
+  that one guild registered under `channels.discord.guilds` — no other
+  Discord server can trigger the bot, even if invited elsewhere. No
+  specific channel restriction within the guild (owner's choice — Claude
+  Code/OpenClaw are expected to create/organize channels within this
+  server as needed, consolidating any that end up serving overlapping
+  purposes rather than letting them proliferate).
+- **Command owner**: `commands.ownerAllowFrom` = `["discord:1531775634072670431"]`
+  (site owner's Discord user ID) — privileged actions (approvals, config
+  changes, diagnostics) are gated to this user via Discord.
+- **DM allowlist**: `channels.discord.allowFrom` = `["1531775634072670431"]`.
+- **Messaging tool**: the "main" agent was missing the `message` tool
+  (found via `openclaw doctor`), which would've silently broken replies/
+  attachments even once connected. Fixed via `openclaw doctor --fix --yes`.
+- **Persistence — already handled, no action needed on future startup**:
+  OpenClaw's Gateway runs as a Windows Scheduled Task named
+  `OpenClaw Gateway`, trigger "At logon time", no execution time limit
+  (verified via `schtasks /query /tn "OpenClaw Gateway" /v /fo list` —
+  this is a different/working setup from the Task Scheduler access-denied
+  issue hit for `barometer-app`'s dev server; OpenClaw's own installer
+  registered this one successfully). It starts automatically at every
+  Windows login — you should never need to manually start it. If
+  something seems disconnected, check status first rather than assuming
+  it needs starting:
+  ```
+  openclaw daemon status
+  openclaw channels status --deep
+  ```
+  Restart if needed: `openclaw daemon restart` (config changes to
+  `channels.discord.*` or `commands.*` require this to take effect).
+- **Real ground-truth check** (bypasses OpenClaw's own state entirely,
+  queries Discord's API directly with the bot's token — useful if
+  OpenClaw's own reporting ever seems stale/wrong):
+  ```
+  node -e "const fs=require('fs');const cfg=JSON.parse(fs.readFileSync(process.env.USERPROFILE+'/.openclaw/openclaw.json','utf8'));fetch('https://discord.com/api/v10/users/@me/guilds',{headers:{Authorization:'Bot '+cfg.channels.discord.token}}).then(r=>r.json()).then(j=>console.log(JSON.stringify(j)))"
+  ```
+- **Discord gotcha hit while setting this up (2026-08-17), costly to
+  rediscover**: the bot's Developer Portal application had **"Requires
+  OAuth2 Code Grant"** enabled on the Bot tab. With that on, every invite
+  attempt *looked* like it worked start to finish — server selectable in
+  the picker, Authorize click succeeded, captcha completed — but the bot
+  never actually joined, because Discord silently waits for an OAuth2
+  code exchange with a backend server that doesn't exist here. Took
+  several full invite-flow retries (including regenerating the URL,
+  trying the newer "Installation" page instead of the OAuth2 URL
+  Generator, verifying app ID/permissions/captcha) before finding this
+  toggle. **If the bot ever needs re-inviting and joins silently fail
+  with no error shown, check this toggle first** before re-doing the
+  invite flow from scratch. Also needed (separately): all three
+  privileged Gateway Intents (Message Content, Server Members, Presence)
+  enabled on the Bot tab — without them Discord closes the gateway
+  connection with code 4014 ("missing privileged gateway intents").
+- **Claude Code is not yet part of this Discord loop.** `openclaw attach`
+  is the supported bridge (mints a scoped MCP grant + spawns a **new**
+  `claude` process wired to the OpenClaw gateway session) — it cannot be
+  retrofitted onto an already-running Claude Code session. Not run yet;
+  next session should either run it or ask the owner to.
+- **Deferred, not blocking**: `gateway.auth.token` and
+  `channels.discord.token` are stored as plaintext in
+  `~\.openclaw\openclaw.json` (flagged by `openclaw secrets audit`) —
+  not yet migrated to SecretRefs. The interactive `openclaw secrets
+  configure` helper hangs waiting on stdin in non-interactive shells (same
+  class of issue as other CLIs — see `barometer-app`'s CLAUDE.md), and a
+  manual provider-based migration was judged too risky to attempt blind
+  given it could break gateway/Discord auth. Revisit if the owner wants
+  this hardened.
+- Config lives at `~\.openclaw\openclaw.json` — global to the workspace,
+  not inside this repo (not committed, not BTNH-specific).
+
 ## Decision history
 - **2026-08-14**: initial architecture drafted around a live Claude-API
   chat widget (Agent Skills, per-session Durable Objects) as the core
@@ -122,6 +201,11 @@ that audience, not building this purely for third parties.
   global `Env` interface, which is what `cloudflare:workers`'s `env`
   export is typed against), redeployed, verified a real submission commits
   correctly end-to-end.
+- **2026-08-17 (later)**: unlinked `/qna` from site nav (still live at its
+  direct URL) and set up OpenClaw + Discord coordination for the Q&A
+  workflow — see "OpenClaw + Discord coordination" above for the full
+  setup, config, and a real gotcha (Discord's "Requires OAuth2 Code
+  Grant" toggle silently breaking bot invites) worth not re-discovering.
 
 ## Status
 **Live** at `https://btnh.kfir-b41.workers.dev` (2026-08-17), Q&A
@@ -202,3 +286,7 @@ and just retry once before assuming something's actually broken.
 - **Check `src/content/qna-pending/` early in any BTNH session** — that's
   the live queue of questions waiting on a human answer, and part of the
   point of this design is that you (Claude Code) can see it too.
+- **The OpenClaw Gateway/Discord bot should already be running** — it's a
+  persistent Windows service, not something this session started. See
+  "OpenClaw + Discord coordination" above before assuming it needs setup;
+  just check status (`openclaw daemon status`) if something seems off.
