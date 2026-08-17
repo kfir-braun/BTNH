@@ -50,7 +50,22 @@ before being built. See "Decision history" below.
   `src/content/qna/` with an added `answer` (and set `answeredAt`), delete
   it from `qna-pending/`, commit, push. The next Pages deploy publishes it
   to `/qna`. This is intentionally a manual, human-in-the-loop step — see
-  "Core feature" above for why.
+  "Core feature" above for why. Claude Code and OpenClaw are expected to
+  actively help work this queue, not just format answers dictated to them:
+  - **Consolidate near-duplicate questions** into one published entry
+    instead of one entry per near-identical submission.
+  - **Recognize when a "question" isn't actually one** — bug reports or
+    complaints about the site itself (broken layout, wrong link, typo)
+    should be fixed directly in the codebase, not published as a Q&A
+    entry. Precedent: a 2026-08-17 submission reporting a missing space
+    before a link turned out to be a real Astro rendering bug (see
+    Decision history) — it got fixed in the code and the pending file was
+    just deleted, never published.
+- **`/qna` is intentionally unlinked from site navigation for now**
+  (`Nav.astro` — removed 2026-08-17). The pages (`/qna`, `/qna/ask`) still
+  work at their direct URLs; it's just not discoverable via the nav bar or
+  Home page yet while the Q&A workflow above is still being shaken out.
+  Don't re-add the nav link without being asked.
 - **Showcase submission + moderation**: same shape as Q&A conceptually but
   still using the earlier-decided design — web upload form → image in
   Cloudflare R2, entry in Cloudflare D1 with status `pending` → owner
