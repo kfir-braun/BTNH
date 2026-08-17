@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { env } from 'cloudflare:workers';
 
 export const prerender = false;
 
@@ -19,7 +20,7 @@ function toFrontmatterYaml(question: string, askedAt: string): string {
 	return `---\nquestion: "${escaped}"\naskedAt: '${askedAt}'\n---\n`;
 }
 
-export const POST: APIRoute = async ({ request, locals }) => {
+export const POST: APIRoute = async ({ request }) => {
 	let body: unknown;
 	try {
 		body = await request.json();
@@ -47,7 +48,6 @@ export const POST: APIRoute = async ({ request, locals }) => {
 		);
 	}
 
-	const env = locals.runtime.env;
 	const askedAt = new Date().toISOString().slice(0, 10);
 	const slug = `${askedAt}-${slugify(trimmed) || 'question'}-${Date.now().toString(36)}`;
 	const path = `src/content/qna-pending/${slug}.md`;

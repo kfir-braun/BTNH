@@ -26,9 +26,11 @@ before being built. See "Decision history" below.
 - **Frontend framework**: Astro. All content pages (Home, Guides,
   Reference, Showcase, Q&A) render as static HTML — no client-side
   framework/islands needed now that the live chat widget is gone.
-- **Hosting**: Cloudflare Pages via the `@astrojs/cloudflare` adapter — one
-  `wrangler` deploy pipeline for both the static pages and the one
-  server-rendered API route (below). Free tier.
+- **Hosting**: a Cloudflare Worker with static assets (via the
+  `@astrojs/cloudflare` adapter + `wrangler.jsonc`'s `assets` block) — not
+  the older Cloudflare Pages git-integration product. Deploy is just
+  `npm run deploy` (`astro build && wrangler deploy`) from a local/CI
+  checkout; no GitHub App/Pages project connection involved. Free tier.
 - **Content pipeline**: git-based Astro content collections
   (`src/content.config.ts`, Content Layer API glob loader). Guides,
   Reference, and curated Showcase writeups are Markdown files edited
@@ -94,12 +96,28 @@ that audience, not building this purely for third parties.
   its own repo (`github.com/kfir-braun/BTNH`, public) — needed a real
   GitHub repo for the submission endpoint to commit into anyway, and it
   matches how the other sibling projects (e.g. `barometer-app`) are set up.
+- **2026-08-17**: deployed to Cloudflare (`npm run deploy`), live at
+  `https://btnh.kfir-b41.workers.dev`. Generated the GitHub fine-grained
+  PAT and set it via `wrangler secret put GITHUB_TOKEN`, then hit a real
+  bug testing the first live submission: `src/pages/api/qna/submit.ts`
+  used `Astro.locals.runtime.env`, which Astro v6+ removed — the
+  `@astrojs/cloudflare` adapter now expects `import { env } from
+  "cloudflare:workers"` instead. Fixed (also moved the `GITHUB_TOKEN`
+  ambient-type augmentation in `src/env.d.ts` from `Cloudflare.Env` to the
+  global `Env` interface, which is what `cloudflare:workers`'s `env`
+  export is typed against), redeployed, verified a real submission commits
+  correctly end-to-end.
 
 ## Status
-Astro project scaffolded and building cleanly (2026-08-15). What exists:
+**Live** at `https://btnh.kfir-b41.workers.dev` (2026-08-17), Q&A
+submission confirmed working end-to-end. What exists:
 - Astro (`astro@^7`) with `@astrojs/cloudflare` adapter. `wrangler.jsonc`
   present (project name `btnh`, `vars.GITHUB_REPO` = `kfir-braun/BTNH`,
-  `vars.GITHUB_BRANCH` = `master`).
+  `vars.GITHUB_BRANCH` = `master`). `GITHUB_TOKEN` secret is set on the
+  deployed Worker (`wrangler secret put`, not in any file). `env.SESSION`
+  KV namespace (`btnh-session`) was auto-provisioned by
+  `@astrojs/cloudflare` on first deploy — unused so far, no session
+  logic in the app yet.
 - Content collections (`src/content.config.ts`): `guides` (schema includes
   `section` enum + optional `voltageTier`), `reference`, `showcase`,
   `qna` (answered: `question`/`askedAt`/`answeredAt` + Markdown body as the
@@ -113,17 +131,17 @@ Astro project scaffolded and building cleanly (2026-08-15). What exists:
   the API route below — no framework/hydration needed).
 - `src/pages/api/qna/submit.ts` — validates the question (10–500 chars,
   honeypot field must be empty), then commits a new file to
-  `src/content/qna-pending/` via the GitHub Contents API using a
-  `GITHUB_TOKEN` secret. **Not yet usable in production**: no GitHub token
-  has been generated/set yet (see Next steps). Local testing confirmed the
-  validation logic (400s for too-short question and filled honeypot); the
-  actual GitHub-commit path is untested end-to-end since there's no token
-  configured locally either.
+  `src/content/qna-pending/` via the GitHub Contents API using
+  `import { env } from "cloudflare:workers"` for the `GITHUB_TOKEN`
+  secret + `GITHUB_REPO`/`GITHUB_BRANCH` vars. **Confirmed working in
+  production** — a real test submission committed correctly (see Decision
+  history 2026-08-17).
 - `npx astro build` succeeds — static pages prerendered, the submit route
   correctly builds as server-rendered (hybrid output, `mode: "server"`
   reported at build time even though most routes are static).
-- Not deployed to Cloudflare yet at all — no Pages project connected, no
-  Cloudflare account linkage for this repo specifically.
+- Deployed via `npm run deploy` (`wrangler deploy`, not the Pages
+  git-integration product — see Architecture above). Cloudflare account:
+  `kfir@hospremiumservices.com`, same one `barometer-app` uses.
 
 **Gotcha hit during scaffolding**: with the Cloudflare adapter,
 `getStaticPaths` runs in an isolated prerender worker and cannot close over
@@ -146,14 +164,6 @@ normally. Cause not root-caused. If a first attempt fails or hangs, kill it
 and just retry once before assuming something's actually broken.
 
 ## Next steps
-- **Blocking Q&A going live**: generate a GitHub fine-grained personal
-  access token scoped only to this repo (Contents: read/write, nothing
-  else), then `wrangler secret put GITHUB_TOKEN` once a Cloudflare Pages
-  project exists for this repo. For local testing before that, put it in
-  a `.dev.vars` file (gitignored; `.dev.vars.example` shows the shape).
-  This is a manual step only the site owner can do (token creation needs
-  a logged-in GitHub session in a browser).
-- Connect this repo to Cloudflare Pages and do a first real deploy.
 - Build the Showcase submission flow (R2 + D1 + admin approval) — still
   not started.
 - Flesh out real guide/reference/showcase/Q&A content — current entries
