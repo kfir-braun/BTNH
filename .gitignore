@@ -21,6 +21,10 @@ pnpm-debug.log*
 .env.production
 .dev.vars
 
+# OpenClaw MCP grant (short-lived token, regenerated via
+# scripts/refresh-openclaw-mcp.js in the parent workspace) - never commit
+.mcp.json
+
 # macOS-specific files
 .DS_Store
 

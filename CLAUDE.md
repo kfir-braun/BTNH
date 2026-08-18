@@ -157,11 +157,37 @@ motivating use case and this is the project it'll be actively used from.
   privileged Gateway Intents (Message Content, Server Members, Presence)
   enabled on the Bot tab — without them Discord closes the gateway
   connection with code 4014 ("missing privileged gateway intents").
-- **Claude Code is not yet part of this Discord loop.** `openclaw attach`
-  is the supported bridge (mints a scoped MCP grant + spawns a **new**
-  `claude` process wired to the OpenClaw gateway session) — it cannot be
-  retrofitted onto an already-running Claude Code session. Not run yet;
-  next session should either run it or ask the owner to.
+- **Claude Code is now wired to OpenClaw via a persistent-ish MCP config**
+  (2026-08-18). `openclaw attach` (the supported bridge — mints a scoped
+  grant + spawns a **new** `claude` process wired to the OpenClaw gateway
+  session) requires a real interactive TTY; it doesn't work from an
+  automated/headless shell (fails with `Input must be provided either
+  through stdin or as a prompt argument when using --print`) and can't be
+  retrofitted onto an already-running session either way (MCP servers only
+  load at Claude Code startup). So instead:
+  - `.mcp.json` files exist at the workspace root
+    (`C:\Users\kfirb\Downloads\ClaudeCode\.mcp.json`) and in this repo
+    (`BTNH\.mcp.json`) — **both gitignored, never commit them** (short-lived
+    token, but still a live credential). Any Claude Code session opened in
+    either location automatically gets OpenClaw's MCP tools.
+  - Attach grants are **hard-capped at 12 hours by the gateway** regardless
+    of the `--ttl` requested (tested requesting 30 days, got capped to
+    12h) — there is no way to get a truly permanent grant this way. The
+    owner explicitly chose this scoped/refreshable model over the
+    alternative (wiring `.mcp.json` to `gateway.auth.token`, the gateway's
+    own permanent admin credential) to avoid a standing broad-access secret
+    sitting in workspace files.
+  - **Refresh with**: `node scripts/refresh-openclaw-mcp.js` (run from the
+    workspace root) — mints a fresh grant and overwrites both `.mcp.json`
+    files. Only takes effect in a **new** Claude Code session (restart
+    required) — it does not affect a session already running.
+  - The MCP endpoint itself (`http://127.0.0.1:<port>/mcp`) is bound by the
+    Gateway process and persists as long as the Gateway is running (it's
+    the same persistent Scheduled Task, not a per-attach ephemeral
+    process) — but the port number can change if the Gateway restarts, so
+    a refresh picks up the current port too, not just a new token.
+  - If OpenClaw tools seem to have disappeared in a session, the grant
+    probably expired — run the refresh script, then start a new session.
 - **Deferred, not blocking**: `gateway.auth.token` and
   `channels.discord.token` are stored as plaintext in
   `~\.openclaw\openclaw.json` (flagged by `openclaw secrets audit`) —
@@ -206,6 +232,12 @@ motivating use case and this is the project it'll be actively used from.
   workflow — see "OpenClaw + Discord coordination" above for the full
   setup, config, and a real gotcha (Discord's "Requires OAuth2 Code
   Grant" toggle silently breaking bot invites) worth not re-discovering.
+- **2026-08-18**: wired Claude Code into OpenClaw via gitignored `.mcp.json`
+  files (workspace root + this repo) instead of `openclaw attach` directly
+  (that needs a real TTY, which this environment doesn't have). Grants are
+  capped at 12h server-side; owner chose the refreshable scoped-grant model
+  over a permanent standing credential — see "OpenClaw + Discord
+  coordination" above.
 
 ## Status
 **Live** at `https://btnh.kfir-b41.workers.dev` (2026-08-17), Q&A
