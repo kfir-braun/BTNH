@@ -250,7 +250,7 @@ e.g. a work job).
     | Yellow | `status: in-progress` | 🟡 | Currently being worked on |
     | Green | `status: fixed` | 🟢 | Fixed |
     | Blue | `status: recurring` | 🔵 | Recurring problem |
-    | Pink | `status: recurring-fixed` | 🩷 | Recurring problem, now fixed |
+    | White | `status: recurring-fixed` | ⚪ | Recurring problem, now fixed |
     | Purple | `status: workaround` | 🟣 | Can't fix directly, needs a workaround |
   - **Discord** = human-facing mirror. New channel `#issues` (guild
     `1537590231643983992`, channel id `1539368755958779994`) — one message
@@ -314,6 +314,14 @@ e.g. a work job).
   judgment plus this doc's guidance *is* the control mechanism right now,
   not a per-candidate human approval step) — revisit if the filer's
   judgment turns out to need tightening after seeing more real runs.
+- **"Pink" is actually white (2026-08-18)**: originally used 🩷 (pink
+  heart) for `recurring-fixed` since Unicode has **no pink circle emoji at
+  all** (the colored-circle set only covers red/orange/yellow/green/blue/
+  purple/brown/black/white) — 🩷 broke the "all circles" visual language
+  the rest of the set has. Owner chose ⚪ (white circle) instead, a real
+  circle from the same set. GitHub label color updated to match
+  (`#ffffff` — same color the repo's default `wontfix` label already
+  uses, so it's a proven-visible choice, not untested).
 
 ## Decision history
 - **2026-08-14**: initial architecture drafted around a live Claude-API
