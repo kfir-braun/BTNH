@@ -204,19 +204,24 @@ motivating use case and this is the project it'll be actively used from.
     anthropic` if it's close to expiring, since that would cap grants
     even harder). Don't assume a fresh refresh is good for a full 12h;
     check `expiresAt` in the script's output.
-  - **Session visibility — set permanently to `agent` scope (2026-08-18)**:
-    `openclaw config set tools.sessions.visibility agent` (top-level
-    config path, hot-reloads, no gateway restart needed). Default is
-    `tree` (only the grant's own session + its spawned subagents), which
-    could NOT see the Discord conversation at all — `sessions_history`
-    returned `{"status":"forbidden", ...}` for it. `agent` scope = every
-    session under the "main" agent (Discord DMs, guild channels, any
-    future second server — all still the one "main" agent), which is
-    exactly "everything this bot does" per the owner's explicit ask,
-    without over-granting to `all` (which would also include any
-    unrelated future agent). Verified working end-to-end after the
-    change: `sessions_history` on a real Discord DM session
-    (`agent:main:discord:direct:<userId>`) returned full message content.
+  - **Session visibility — set permanently to `all` scope, plus
+    `tools.agentToAgent.enabled=true` (2026-08-18, upgraded same day)**:
+    `openclaw config set tools.sessions.visibility all` and `openclaw
+    config set tools.agentToAgent.enabled true` (both top-level config
+    paths, both hot-reload). History: default is `tree` (only the grant's
+    own session + spawned subagents) — couldn't see the Discord
+    conversation at all (`sessions_history` → `forbidden`). Bumped to
+    `agent` scope first (covers everything under the "main" agent —
+    Discord DMs, guild channels, future second server), which was enough
+    until the issue-hunter/issue-filer agents were created (see "Issue
+    tracking" below) — `agent` scope is *per agent*, so it could NOT see
+    those agents' own sessions (confirmed: `sessions_list` found zero
+    matches for issue-filer's Discord activity even though it had just
+    posted). Since the owner's ask was explicitly "see everything this
+    bot does" and that now spans multiple OpenClaw agents acting through
+    the same Discord bot, went to `all` scope instead. Verified end-to-end
+    at each stage: DM session content readable after the `agent` bump;
+    `issue-filer`'s own Discord post readable after the `all` bump.
 - **Deferred, not blocking**: `gateway.auth.token` and
   `channels.discord.token` are stored as plaintext in
   `~\.openclaw\openclaw.json` (flagged by `openclaw secrets audit`) —
@@ -228,6 +233,87 @@ motivating use case and this is the project it'll be actively used from.
   this hardened.
 - Config lives at `~\.openclaw\openclaw.json` — global to the workspace,
   not inside this repo (not committed, not BTNH-specific).
+
+## Issue tracking (hunter/filer workers)
+A two-agent pipeline (owner's explicit design — hunting and filing are
+deliberately separate so there's a control point between "found something"
+and "published to the tracker"), set up 2026-08-18, scoped to BTNH for now
+(the owner's plan is to extend this pattern to other repos/projects later,
+e.g. a work job).
+
+- **The public tracker, two halves**:
+  - **GitHub** = source of truth. Six labels on `kfir-braun/BTNH`, one
+    `status: *` per issue at a time:
+    | Color | Label | Emoji | Meaning |
+    |---|---|---|---|
+    | Red | `status: known` | 🔴 | Known, not worked on |
+    | Yellow | `status: in-progress` | 🟡 | Currently being worked on |
+    | Green | `status: fixed` | 🟢 | Fixed |
+    | Blue | `status: recurring` | 🔵 | Recurring problem |
+    | Pink | `status: recurring-fixed` | 🩷 | Recurring problem, now fixed |
+    | Purple | `status: workaround` | 🟣 | Can't fix directly, needs a workaround |
+  - **Discord** = human-facing mirror. New channel `#issues` (guild
+    `1537590231643983992`, channel id `1539368755958779994`) — one message
+    per issue, emoji + title + GitHub link, edited in place as status
+    changes (not reposted).
+- **Two OpenClaw agents** (`openclaw agents list` to see them; both
+  workspace = this repo):
+  - `issue-hunter` — read-only. Scans for candidates (code TODOs, `npm run
+    build` failures, `src/content/qna-pending/` entries that are actually
+    bug reports, git/CLAUDE.md history for recurrence). Writes to a shared
+    queue file. **Never touches GitHub or Discord.**
+  - `issue-filer` — the publish gate. Reads the queue, dedupes against
+    existing issues, applies judgment on whether something's actually
+    worth filing (deliberately conservative — under-file rather than spam
+    the tracker), files/labels the GitHub issue, posts/updates `#issues`.
+    Also handles status transitions when told (`known → in-progress →
+    fixed`, etc.) — see its skill for the full lifecycle rules, including
+    the `recurring` (🔵) ⇄ `recurring-fixed` (🩷) transition being distinct
+    from the normal `known` → `fixed` one.
+- **Skills** (the actual instructions each agent follows): installed
+  globally at `~\.openclaw\skills\issue-hunt\SKILL.md` and
+  `~\.openclaw\skills\issue-file\SKILL.md`. Source copies are wherever this
+  session's scratchpad was — the installed copies are the real ones to
+  edit going forward (`openclaw skills install <dir> --as <name> --global
+  --force` to update, then no restart needed — skills reload live).
+- **Shared state** (both files, `~\.openclaw\shared\issue-queue\`):
+  - `btnh-candidates.json` — hunter writes, filer consumes/clears.
+  - `btnh-discord-map.json` — filer's own record of issue# → Discord
+    channel/message id (so status updates edit in place) plus a
+    self-healing `discordPending` mechanism for when a Discord post
+    couldn't be sent that run (see gotcha below).
+- **Scheduling**: two cron jobs (`openclaw cron list`) —
+  `btnh-issue-hunt` every 12h, `btnh-issue-file` every 6h. Both created
+  with `--session isolated`; delivery mode is `none` on both (the generic
+  cron "announce final text to a channel" fallback isn't useful here since
+  both skills already do their own explicit output — queue file for the
+  hunter, GitHub+Discord writes for the filer — leaving delivery on just
+  produced a spurious `Discord recipient is required` error since these
+  agents aren't bound to a default channel). Manual test run:
+  `openclaw cron run <job-id>` (or `openclaw agent --agent <id> --message
+  "..."` for a fully custom one-off prompt, e.g. to nudge a self-heal).
+- **Gotcha (hit + fixed same day)**: new agents do **not** get the
+  `message` tool by default (default `tools.profile` is `coding`, which
+  excludes it) — `issue-filer`'s first real run filed GitHub issue #1
+  correctly but then couldn't post to Discord, and *correctly* degraded by
+  recording a pending entry instead of losing the post (see skill's Phase
+  0). Fixed with a narrow additive grant, not a profile swap (keeps
+  git/gh/exec access intact):
+  ```
+  openclaw config get agents.list          # find the index - it's an array, not keyed by id
+  openclaw config set "agents.list[<i>].tools.alsoAllow" --strict-json '["message"]'
+  ```
+- **Verified end-to-end (2026-08-18)**: real test run filed
+  [BTNH#1](https://github.com/kfir-braun/BTNH/issues/1) (`status: known`,
+  a benign build warning about the empty `qna-pending` glob) and posted it
+  to `#issues` — confirmed independently both via `gh issue view 1` and by
+  reading the Discord message back through Claude Code's own MCP session
+  tools (see "OpenClaw + Discord coordination" above for the visibility
+  scope this needed).
+- **Not yet built**: no approval-gate UI for filing (the filer's own
+  judgment plus this doc's guidance *is* the control mechanism right now,
+  not a per-candidate human approval step) — revisit if the filer's
+  judgment turns out to need tightening after seeing more real runs.
 
 ## Decision history
 - **2026-08-14**: initial architecture drafted around a live Claude-API
@@ -274,6 +360,15 @@ motivating use case and this is the project it'll be actively used from.
   `forbidden`) — fixed by setting `tools.sessions.visibility=agent`
   permanently, since the owner wants full visibility into everything this
   bot does, including a second work-related server planned for later.
+- **2026-08-18 (later)**: built the two-agent issue-tracking pipeline
+  (`issue-hunter`/`issue-filer`, 6 GitHub status labels, Discord `#issues`
+  channel) — see "Issue tracking" above for the full design, a real gotcha
+  (new agents lack the `message` tool by default), and end-to-end
+  verification (filed and posted BTNH#1 for real). Also upgraded session
+  visibility from `agent` to `all` scope, since `agent` scope turned out
+  to be per-OpenClaw-agent and couldn't see the new agents' own sessions —
+  needed once "everything this bot does" started spanning more than just
+  the "main" agent.
 
 ## Status
 **Live** at `https://btnh.kfir-b41.workers.dev` (2026-08-17), Q&A
