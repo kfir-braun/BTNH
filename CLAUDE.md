@@ -268,7 +268,7 @@ e.g. a work job).
     the tracker), files/labels the GitHub issue, posts/updates `#issues`.
     Also handles status transitions when told (`known → in-progress →
     fixed`, etc.) — see its skill for the full lifecycle rules, including
-    the `recurring` (🔵) ⇄ `recurring-fixed` (🩷) transition being distinct
+    the `recurring` (🔵) ⇄ `recurring-fixed` (⚪) transition being distinct
     from the normal `known` → `fixed` one.
 - **Skills** (the actual instructions each agent follows): installed
   globally at `~\.openclaw\skills\issue-hunt\SKILL.md` and
@@ -322,6 +322,113 @@ e.g. a work job).
   circle from the same set. GitHub label color updated to match
   (`#ffffff` — same color the repo's default `wontfix` label already
   uses, so it's a proven-visible choice, not untested).
+
+### Requests tracker (2026-08-18)
+A second, parallel tracker for feature/content asks, alongside the issues
+one — same mechanics, deliberately simpler (a request either hasn't been
+done, is being done, or is done; "recurring" and "can't fix" don't apply
+the same way a request does):
+- **GitHub**: 3 labels, `request: known` 🔴 / `request: in-progress` 🟡 /
+  `request: implemented` 🟢. Never both a `status: *` and `request: *`
+  label on the same issue — they're different tracker entries.
+- **Discord**: new channel `#requests` (id `1539407172583170190`), routed
+  to `issue-filer` via the same binding mechanism as `#issues` (see
+  `openclaw config get bindings` — now an array of 2 route entries, both
+  `agentId: issue-filer`, differing only in `match.peer.id`).
+- `issue-filer` handles both trackers; `issue-hunter` doesn't know about
+  requests at all (it only hunts code-side problems).
+
+### issue-filer now reads Q&A directly (2026-08-18)
+Per the owner's request, `issue-filer` doesn't just process `issue-hunt`'s
+queue anymore — every run it also reads `src/content/qna-pending/*.md`
+itself (Phase 0.5 in its skill) and classifies each submission as: a
+genuine GTNH question (left untouched, answered normally), a bug report
+(→ issues tracker), or a feature/content request (→ requests tracker).
+Bug/request submissions get their pending `.md` file deleted once
+filed/handled (same precedent as the original missing-space bug from
+2026-08-17) — they don't need a Q&A-page answer, they needed a fix or a
+tracked ask.
+
+### Condensing + recurring + hard-block detection (2026-08-18)
+Added to `issue-file`'s skill, per the owner's request:
+- **Condensing**: before filing a new issue, the filer checks whether an
+  open issue already covers the *same root cause* at a different
+  location (not just exact-title dedup). If so, it edits that issue's
+  body into an expandable `<details><summary>📍 Affected locations
+  (N)</summary>` checklist instead of creating a duplicate, adding a new
+  line for the new location and bumping the count. A single-location
+  issue gets converted into this form the moment a second location shows
+  up.
+- **Recurring** (🔵): the filer independently searches closed
+  `status: fixed`/`status: recurring-fixed` issues for a root-cause match
+  before deciding `known` vs `recurring` — doesn't just trust
+  `issue-hunt`'s suggestion.
+- **Hard-block / `workaround`** (🟣): the filer proactively *flags*
+  candidates for this status (issues stuck `in-progress` a long time,
+  repeated reopens) in its run summary, but does not self-transition to
+  `workaround` without confirmation — declaring something unfixable is
+  treated as a supervised call, not an autonomous one.
+
+### Exec-boundary hardening: investigated, hit a real architectural wall (2026-08-18)
+Tried to turn the hunter→filer boundary from prompt-level (skill
+instructions, 100% reliable in every real run so far) into a hard
+technical restriction. Two approaches attempted, both dead-ended after
+**reading OpenClaw's actual source** (not just guessing from CLI docs):
+- **Per-agent exec allowlist** (`openclaw approvals allowlist add --agent
+  issue-hunter <path>` + `security: allowlist`): applied it, and it broke
+  **everything** for `issue-hunter` — including `git`, which was
+  correctly on the allowlist. Root cause, found in
+  `claude-live-session-*.js`'s `handleClaudeLiveControlRequest`: for
+  agents on the `claude-cli` runtime (all of ours), every native tool
+  call is gated by one hardcoded check —
+  `security === "full" && ask === "off"` — full stop. The allowlist array
+  is never consulted on this path at all; it's for a different exec
+  mechanism these agents don't use. **Reverted immediately** back to the
+  working state once this broke `git`, not left half-applied.
+- **Per-agent GitHub credential** (give the hunter a read-only token so
+  `gh issue create` fails on auth even if invoked): no `agents.list[i].env`
+  (or equivalent) config path exists to inject a distinct env var per
+  agent — confirmed via `config set ... --dry-run` schema rejection, not
+  assumption.
+- **Conclusion**: for `claude-cli`-backed agents in this OpenClaw version,
+  shell exec is all-or-nothing per agent — there's no way to allow `git`/
+  `npm`/`grep` while denying `gh` specifically without a platform feature
+  that doesn't currently exist. The only way to get a *hard* wall would be
+  stripping the hunter's shell access entirely, which would also kill its
+  `npm run build`/`grep`/`git log` capability — not an acceptable
+  trade-off since those are core to its job. Left as the proven
+  prompt-level boundary; revisit if a future OpenClaw version exposes
+  finer-grained exec control.
+
+### Gotcha: agent sessions cache their tool list at creation, not live (2026-08-18)
+Hit while testing the Q&A monitoring feature: granted `issue-filer` the
+`message` tool (`agents.list[i].tools.alsoAllow`), restarted the gateway
+multiple times, and it *still* reported `No such tool available: message`
+- even though `openclaw config get` showed the grant correctly in place.
+Root cause: `openclaw agent --agent issue-filer --message "..."` resumes
+the agent's persistent session (`agent:issue-filer:main`) by default, and
+that session's available-tools list was fixed when the session was first
+created - **restarting the gateway does not create a new session, so it
+doesn't pick up new tool grants either.** Fix: pass an explicit fresh
+`--session-key` (e.g. `agent:issue-filer:test-$(date +%s)`) to force a
+brand-new session, which does pick up current config. Cron-triggered runs
+already use `--session isolated` (a fresh session each time), so
+**scheduled runs aren't affected by this** - it only bit manual
+`openclaw agent` testing/nudging. Also independently set `plugins.allow:
+["discord","anthropic"]` (the "auto-loading" plugin warning suggested it)
+while debugging this - didn't turn out to be the actual cause, but no
+reason to revert it.
+
+### Verified end-to-end test of the new capabilities (2026-08-18)
+Created two throwaway test submissions in `qna-pending/` (one bug-shaped,
+one request-shaped, both clearly marked "TEST SUBMISSION"). `issue-filer`
+correctly classified and filed both to the right tracker with the right
+label, deleted both pending files, and (once the session-cache gotcha
+above was resolved) posted both to the correct Discord channels. Cleaned
+up afterward — deleted both test GitHub issues (`gh issue delete`) and
+both test Discord messages, removed their entries from
+`btnh-discord-map.json` — so the tracker only reflects real content
+(currently just BTNH#1).
 
 ## Decision history
 - **2026-08-14**: initial architecture drafted around a live Claude-API
@@ -377,6 +484,24 @@ e.g. a work job).
   to be per-OpenClaw-agent and couldn't see the new agents' own sessions —
   needed once "everything this bot does" started spanning more than just
   the "main" agent.
+- **2026-08-18 (even later)**: added a parallel Requests tracker (3-status,
+  own Discord `#requests` channel), gave `issue-filer` direct read access
+  to `qna-pending/` so it can classify submissions as bug/request/genuine-
+  question on its own, and taught it to condense same-root-cause issues
+  from different locations into one expandable checklist instead of
+  filing duplicates, independently verify `recurring` status against
+  closed-issue history, and proactively flag (not auto-set) `workaround`
+  candidates. Investigated hardening the hunter/filer boundary into a real
+  technical wall — hit a genuine OpenClaw architectural limit (shell exec
+  is all-or-nothing per `claude-cli` agent; no per-agent credential
+  scoping exists) after reading the actual source, reverted cleanly when
+  the first attempt broke `git` for the hunter. Also found and worked
+  around a real gotcha: agent sessions cache their tool list at creation,
+  so a new `tools.alsoAllow` grant doesn't reach an already-existing
+  session no matter how many times the gateway restarts — needs a fresh
+  `--session-key`. Verified the whole new flow live with two throwaway
+  test submissions (one bug, one request), then cleaned up all test
+  artifacts (GitHub issues, Discord messages, mapping entries).
 
 ## Status
 **Live** at `https://btnh.kfir-b41.workers.dev` (2026-08-17), Q&A
