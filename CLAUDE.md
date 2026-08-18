@@ -104,7 +104,14 @@ personal agent), but it's documented here because BTNH/Q&A was the
 motivating use case and this is the project it'll be actively used from.
 
 - **Server**: "KbWORKS's server" (guild ID `1537590231643983992`). Bot:
-  `@clawed` (application/user ID `1537593998812643368`).
+  `@clawed` (application/user ID `1537593998812643368`). **Owner plans to
+  add this same bot to a second, work-related server too** — when that
+  happens, its guild ID needs to be added under
+  `channels.discord.guilds` (see Locking below) or the bot will be
+  silently blocked from responding there. `tools.sessions.visibility`
+  being agent-scoped (see below) already covers any server the bot is
+  in automatically — no extra visibility config needed for a new server,
+  just the allowlist entry.
 - **Locking**: `channels.discord.groupPolicy` = `"allowlist"` with only
   that one guild registered under `channels.discord.guilds` — no other
   Discord server can trigger the bot, even if invited elsewhere. No
@@ -188,6 +195,28 @@ motivating use case and this is the project it'll be actively used from.
     a refresh picks up the current port too, not just a new token.
   - If OpenClaw tools seem to have disappeared in a session, the grant
     probably expired — run the refresh script, then start a new session.
+  - **Observed TTL is not reliably 12h** — one refresh only got ~1h of
+    validity (mint → expiry), noticeably shorter than the 12h cap seen
+    elsewhere. Likely bounded by whichever is shorter: the 12h server cap,
+    or the remaining validity of the underlying `anthropic:claude-cli`
+    OAuth session (`openclaw doctor` surfaces that session's own
+    expiry — re-auth with `openclaw models auth login --provider
+    anthropic` if it's close to expiring, since that would cap grants
+    even harder). Don't assume a fresh refresh is good for a full 12h;
+    check `expiresAt` in the script's output.
+  - **Session visibility — set permanently to `agent` scope (2026-08-18)**:
+    `openclaw config set tools.sessions.visibility agent` (top-level
+    config path, hot-reloads, no gateway restart needed). Default is
+    `tree` (only the grant's own session + its spawned subagents), which
+    could NOT see the Discord conversation at all — `sessions_history`
+    returned `{"status":"forbidden", ...}` for it. `agent` scope = every
+    session under the "main" agent (Discord DMs, guild channels, any
+    future second server — all still the one "main" agent), which is
+    exactly "everything this bot does" per the owner's explicit ask,
+    without over-granting to `all` (which would also include any
+    unrelated future agent). Verified working end-to-end after the
+    change: `sessions_history` on a real Discord DM session
+    (`agent:main:discord:direct:<userId>`) returned full message content.
 - **Deferred, not blocking**: `gateway.auth.token` and
   `channels.discord.token` are stored as plaintext in
   `~\.openclaw\openclaw.json` (flagged by `openclaw secrets audit`) —
@@ -237,7 +266,14 @@ motivating use case and this is the project it'll be actively used from.
   (that needs a real TTY, which this environment doesn't have). Grants are
   capped at 12h server-side; owner chose the refreshable scoped-grant model
   over a permanent standing credential — see "OpenClaw + Discord
-  coordination" above.
+  coordination" above. Verified live end-to-end: sent a real Discord DM
+  to `@clawed`, confirmed it was received (`openclaw health` showed a new
+  session `agent:main:discord:direct:<userId>`) and answered. Default
+  session-tools visibility (`tree`) turned out to block reading that
+  session at all from the attached MCP grant (`sessions_history` →
+  `forbidden`) — fixed by setting `tools.sessions.visibility=agent`
+  permanently, since the owner wants full visibility into everything this
+  bot does, including a second work-related server planned for later.
 
 ## Status
 **Live** at `https://btnh.kfir-b41.workers.dev` (2026-08-17), Q&A
