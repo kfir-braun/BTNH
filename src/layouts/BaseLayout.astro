@@ -26,6 +26,11 @@ const { title, description = 'BuildTech: New Horizons — base building for Greg
 	</body>
 </html>
 
+<script>
+	import { initTierScroll } from '../lib/tierScroll';
+	initTierScroll();
+</script>
+
 <style is:global>
 	:root {
 		color-scheme: dark;
@@ -33,8 +38,12 @@ const { title, description = 'BuildTech: New Horizons — base building for Greg
 	body {
 		margin: 0;
 		font-family: system-ui, sans-serif;
-		background: #111;
-		color: #eee;
+		/* Defaults match the LV stop, so there's no flash before JS runs. */
+		background: var(--scroll-bg, #34333f);
+		color: var(--scroll-fg, #f2f2f5);
+		transition:
+			background-color 0.15s linear,
+			color 0.15s linear;
 	}
 	main {
 		max-width: 860px;
@@ -42,7 +51,8 @@ const { title, description = 'BuildTech: New Horizons — base building for Greg
 		padding: 2rem 1.5rem 5rem;
 	}
 	a {
-		color: #6ea8ff;
+		color: var(--scroll-link, #8ab4ff);
+		transition: color 0.15s linear;
 	}
 	table {
 		border-collapse: collapse;
@@ -50,8 +60,9 @@ const { title, description = 'BuildTech: New Horizons — base building for Greg
 	}
 	th,
 	td {
-		border: 1px solid #333;
+		border: 1px solid var(--scroll-border, rgba(255, 255, 255, 0.25));
 		padding: 0.4rem 0.7rem;
 		text-align: left;
+		transition: border-color 0.15s linear;
 	}
 </style>

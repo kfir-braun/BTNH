@@ -31,6 +31,47 @@ before being built. See "Decision history" below.
 - **Frontend framework**: Astro. All content pages (Home, Guides,
   Reference, Showcase, Q&A) render as static HTML — no client-side
   framework/islands needed now that the live chat widget is gone.
+- **Visual identity: scroll through the voltage tiers** (2026-08-19,
+  owner's concept — "the rabbit hole," GTNH's own reputation for how deep
+  the tech tree goes). Every page's background smoothly interpolates
+  LV → MV → HV → EV → IV → LuV → ZPM → UV → UHV as you scroll top to
+  bottom, site-wide (not just one page). Colors are eyeballed from the
+  owner's own in-game screenshots of each tier's machine casing (not
+  looked-up wiki values — the primary GTNH wiki and every fan-wiki mirror
+  tried blocked automated fetching; asking the owner for real screenshots
+  was faster and more accurate than fighting that). Source of truth:
+  `src/lib/tiers.ts` (the 9 colors, in order) and `src/lib/tierScroll.ts`
+  (the scroll listener + interpolation, imported into
+  `BaseLayout.astro`'s inline `<script>`). ULV and Steam are deliberately
+  excluded per the owner.
+  - **Text/link/border colors are computed live, not fixed** — background
+    luminance swings from near-black (LV) to near-white (UV), so a static
+    text color would go unreadable at one end. `tierScroll.ts` sets
+    `--scroll-fg`/`--scroll-fg-dim`/`--scroll-link`/`--scroll-border` CSS
+    custom properties every scroll frame (throttled via
+    `requestAnimationFrame`); `BaseLayout.astro`'s global styles and
+    `Nav.astro` consume them instead of hardcoded hex values. Any new
+    page-specific styling should do the same — check for hardcoded hex
+    colors before adding them (`grep -rn "#[0-9a-fA-F]\{3,6\}" src/pages
+    src/components` is the quick sweep used to catch the last stragglers).
+  - **Real contrast bug, caught before shipping**: the first version
+    picked light-vs-dark text with a plain `backgroundLuminance > 0.5`
+    threshold. Wrong — the light-text color (`#f2f2f5`) sits much closer
+    to white than the dark-text color (`#15151a`) sits to black, so the
+    real crossover point is well below 0.5. That naive threshold gave MV/
+    HV/EV/LuV/UHV light text against backgrounds light text can't read
+    well on (contrast ratios as low as ~1.8:1, WCAG AA wants 4.5:1 for
+    normal text) — caught by actually computing contrast ratios for all 9
+    stops in Node before shipping, not by eyeballing it. Fixed by
+    comparing real contrast ratios against both fixed text options and
+    picking whichever wins, instead of a fixed midpoint (see
+    `pickTextIsDark` in `tierScroll.ts`). Verified after the fix: all 9
+    stops land between 5.19:1 and 11.11:1; worst point *anywhere* during
+    a scroll transition (not a resting state) is ~4.04:1, briefly during
+    the LuV→ZPM blend — under the strict 4.5:1 AA target but still above
+    the 3:1 large-text/UI-component minimum, and transient rather than a
+    static reading position. Judged acceptable rather than adding a third
+    text-color tier for one brief transitional moment.
 - **Hosting**: a Cloudflare Worker with static assets (via the
   `@astrojs/cloudflare` adapter + `wrangler.jsonc`'s `assets` block) — not
   the older Cloudflare Pages git-integration product. Deploy is just
@@ -520,6 +561,16 @@ both test Discord messages, removed their entries from
   reviews before it's considered final (chosen over "Claude drafts from
   general knowledge" specifically because GTNH/GT-pack specifics are easy
   to get subtly wrong without the owner's actual expertise).
+- **2026-08-19 (later)**: built the site-wide scroll-through-voltage-tiers
+  visual identity (LV→UHV background transition, owner's "rabbit hole"
+  concept). Tried to source tier colors from the GTNH wiki first — every
+  source (primary wiki, two fan-wiki mirrors) blocked automated fetching,
+  so asked the owner for real in-game screenshots instead, which was both
+  faster and more accurate than continuing to fight bot-blocking. Caught
+  and fixed a real WCAG contrast bug before shipping (naive luminance
+  threshold gave several tiers unreadable text) by actually computing
+  contrast ratios in Node rather than eyeballing it — see "Visual identity"
+  under Architecture above for the full story and numbers.
 
 ## Status
 **Live** at `https://btnh.kfir-b41.workers.dev` (2026-08-17), Q&A

@@ -34,10 +34,13 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 		font: inherit;
 		padding: 0.6rem;
 		border-radius: 8px;
-		border: 1px solid #333;
-		background: #1a1a1a;
+		border: 1px solid var(--scroll-border, rgba(255, 255, 255, 0.25));
+		/* Neutral tint instead of a fixed dark fill - stays readable whether
+		   the page background is currently a dark or light tier color. */
+		background: rgba(128, 128, 128, 0.14);
 		color: inherit;
 		resize: vertical;
+		transition: border-color 0.15s linear;
 	}
 	.honeypot {
 		position: absolute;
