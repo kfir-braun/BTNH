@@ -39,7 +39,23 @@ const { title, description = 'BuildTech: New Horizons — base building for Greg
 		margin: 0;
 		font-family: system-ui, sans-serif;
 		/* Defaults match the LV stop, so there's no flash before JS runs. */
-		background: var(--scroll-bg, #34333f);
+		background-color: var(--scroll-bg, #34333f);
+		/* Brushed-metal texture: a soft diagonal specular sheen plus fine
+		   diagonal streaks, both alpha-blended so they read consistently as
+		   "metal" over whatever tier color is currently underneath, rather
+		   than needing per-tier art. Fixed attachment keeps the sheen reading
+		   as a material property of the page rather than printed content that
+		   scrolls past. */
+		background-image:
+			radial-gradient(ellipse 120% 60% at 25% -10%, rgba(255, 255, 255, 0.12), transparent 55%),
+			repeating-linear-gradient(
+				115deg,
+				rgba(255, 255, 255, 0.05) 0px,
+				rgba(255, 255, 255, 0.05) 1px,
+				rgba(0, 0, 0, 0.05) 1px,
+				rgba(0, 0, 0, 0.05) 3px
+			);
+		background-attachment: fixed;
 		color: var(--scroll-fg, #f2f2f5);
 		transition:
 			background-color 0.15s linear,

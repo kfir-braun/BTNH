@@ -40,14 +40,26 @@ function pickTextIsDark(bgLuminance: number): boolean {
 	return contrastRatio(bgLuminance, DARK_TEXT_LUM) >= contrastRatio(bgLuminance, LIGHT_TEXT_LUM);
 }
 
+// Floor on how little scroll distance one tier-to-tier transition can be
+// compressed into. Without this, a short page (little scrollable height)
+// would rush through all 8 transitions in a handful of pixels - on a page
+// like Home, that reads as "the whole tier list at once" rather than a
+// scroll journey. A long page's natural per-tier distance
+// (scrollableHeight / 8) is usually already bigger than this floor, so it
+// keeps stretching to fill the page as before; short pages clamp to this
+// minimum instead and simply don't reach the later tiers by the time the
+// page ends, rather than being compressed to fit.
+const MIN_PX_PER_TIER = 300;
+
 export function initTierScroll(): void {
 	const body = document.body;
 	let ticking = false;
 
 	function update() {
 		const scrollable = document.documentElement.scrollHeight - window.innerHeight;
-		const progress = scrollable > 0 ? Math.min(1, Math.max(0, window.scrollY / scrollable)) : 0;
-		const segment = progress * (STOPS.length - 1);
+		const naturalPxPerTier = scrollable / (STOPS.length - 1);
+		const pxPerTier = Math.max(MIN_PX_PER_TIER, naturalPxPerTier);
+		const segment = pxPerTier > 0 ? Math.min(window.scrollY / pxPerTier, STOPS.length - 1) : 0;
 		const idx = Math.min(Math.floor(segment), STOPS.length - 2);
 		const t = segment - idx;
 		const [r1, g1, b1] = STOPS[idx];

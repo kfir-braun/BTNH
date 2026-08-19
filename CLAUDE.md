@@ -72,6 +72,21 @@ before being built. See "Decision history" below.
     the 3:1 large-text/UI-component minimum, and transient rather than a
     static reading position. Judged acceptable rather than adding a third
     text-color tier for one brief transitional moment.
+  - **Per-tier scroll distance has a floor (2026-08-19)**: originally
+    mapped a page's full scrollable height to all 8 transitions always,
+    which crammed the whole LV→UHV journey into a handful of pixels on
+    short pages (e.g. Home) — felt like "all tiers at once," not a scroll
+    journey. Fixed with `MIN_PX_PER_TIER = 300` in `tierScroll.ts`: actual
+    per-tier pixel distance is `max(300, scrollableHeight / 8)`. Long
+    pages keep stretching naturally to reach UHV exactly at the bottom
+    (unchanged behavior); short pages clamp to the 300px floor and simply
+    don't reach the later tiers by the time the page ends, rather than
+    being compressed to fit.
+  - **Metallic texture (2026-08-19)**: body background is no longer a flat
+    `--scroll-bg` fill — a subtle fixed-attachment radial "sheen" +
+    diagonal repeating-stripe texture (both low-alpha, blend over whatever
+    color is underneath) gives a brushed-metal read across the whole tier
+    range without needing per-tier art.
 - **Hosting**: a Cloudflare Worker with static assets (via the
   `@astrojs/cloudflare` adapter + `wrangler.jsonc`'s `assets` block) — not
   the older Cloudflare Pages git-integration product. Deploy is just
