@@ -7,12 +7,17 @@ separate from the parent workspace folder it lives under locally. Push
 changes here directly; don't rely on the parent folder's git history.
 
 ## What this is
-A free website about base building for the modded Minecraft modpack
-**GregTech: New Horizons (GTNH)**. Focus areas: base building,
-infrastructure, aesthetics, and overall efficiency. No accounts, no
-monetization — the owner has no way to recoup running costs, so **every
-architecture decision here optimizes for staying on free tiers**, not for
-maximum capability.
+A free website about base building for **GregTech-style modded Minecraft
+modpacks** (GTNH and similar) — not scoped to GTNH specifically (2026-08-19
+decision, see Decision history). Focus areas: base building,
+infrastructure, aesthetics, and overall efficiency. Content should hold up
+across GregTech-family packs, and ideally be useful for modded Minecraft
+base building more broadly even outside GregTech specifically — write
+guides with that portability in mind rather than leaning on version-locked
+GTNH specifics (exact recipe numbers, exact tier names) unless the topic
+genuinely requires them. No accounts, no monetization — the owner has no
+way to recoup running costs, so **every architecture decision here
+optimizes for staying on free tiers**, not for maximum capability.
 
 ## Core feature
 A **Q&A page**, not a live AI chat. Players submit a question through a
@@ -90,10 +95,11 @@ before being built. See "Decision history" below.
   Doubles as a growing FAQ/knowledge base.
 - **Ask a Question** (`/qna/ask`) — the submission form.
 
-### Target audience (decided)
-The modded Minecraft community — GTNH players generally, not segmented
-into new-vs-veteran tiers. The site owner is also a player and part of
-that audience, not building this purely for third parties.
+### Target audience (decided, broadened 2026-08-19)
+The modded Minecraft community — GregTech-style-modpack players generally
+(GTNH and similar, not GTNH-exclusive), not segmented into new-vs-veteran
+tiers. The site owner is also a player and part of that audience, not
+building this purely for third parties.
 
 ## OpenClaw + Discord coordination
 The site owner, Claude Code, and OpenClaw coordinate on this project
@@ -502,6 +508,18 @@ both test Discord messages, removed their entries from
   `--session-key`. Verified the whole new flow live with two throwaway
   test submissions (one bug, one request), then cleaned up all test
   artifacts (GitHub issues, Discord messages, mapping entries).
+- **2026-08-19**: broadened project scope from GTNH-specific to
+  GregTech-style modpacks generally (GTNH and similar), with content
+  written to hold up for modded Minecraft base-building more broadly where
+  possible. Owner's call, made when starting on real content — didn't want
+  to lock the site into one specific pack's version-specific numbers.
+  Updated site copy (Home, Q&A page descriptions, `BaseLayout`'s default
+  meta description) and this file's "What this is"/"Target audience"
+  sections accordingly. Content approach going forward: owner dictates the
+  actual knowledge, Claude Code writes/formats it into pages, owner
+  reviews before it's considered final (chosen over "Claude drafts from
+  general knowledge" specifically because GTNH/GT-pack specifics are easy
+  to get subtly wrong without the owner's actual expertise).
 
 ## Status
 **Live** at `https://btnh.kfir-b41.workers.dev` (2026-08-17), Q&A
