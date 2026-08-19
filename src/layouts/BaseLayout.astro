@@ -40,20 +40,37 @@ const { title, description = 'BuildTech: New Horizons — base building for Greg
 		font-family: system-ui, sans-serif;
 		/* Defaults match the LV stop, so there's no flash before JS runs. */
 		background-color: var(--scroll-bg, #34333f);
-		/* Brushed-metal texture: a soft diagonal specular sheen plus fine
-		   diagonal streaks, both alpha-blended so they read consistently as
-		   "metal" over whatever tier color is currently underneath, rather
-		   than needing per-tier art. Fixed attachment keeps the sheen reading
-		   as a material property of the page rather than printed content that
-		   scrolls past. */
+		/* Brushed-metal texture, modeled on the blocky/maze-like pattern in the
+		   owner's own casing screenshots: a soft specular sheen, a fine grid
+		   of horizontal+vertical strokes (the "blocky" read), plus a diagonal
+		   accent line for extra grain. --stroke-light/--stroke-dark are set by
+		   tierScroll.ts and cycle through three intensity presets (normal/
+		   lighter/darker) as you scroll through tiers - one shared gradient
+		   recipe, just re-tinted, rather than three separate patterns. Fixed
+		   attachment keeps it reading as a material property of the page
+		   rather than printed content that scrolls past. */
 		background-image:
 			radial-gradient(ellipse 120% 60% at 25% -10%, rgba(255, 255, 255, 0.12), transparent 55%),
 			repeating-linear-gradient(
+				0deg,
+				var(--stroke-light, rgba(255, 255, 255, 0.05)) 0px,
+				var(--stroke-light, rgba(255, 255, 255, 0.05)) 2px,
+				transparent 2px,
+				transparent 6px
+			),
+			repeating-linear-gradient(
+				90deg,
+				var(--stroke-dark, rgba(0, 0, 0, 0.05)) 0px,
+				var(--stroke-dark, rgba(0, 0, 0, 0.05)) 2px,
+				transparent 2px,
+				transparent 6px
+			),
+			repeating-linear-gradient(
 				115deg,
-				rgba(255, 255, 255, 0.05) 0px,
-				rgba(255, 255, 255, 0.05) 1px,
-				rgba(0, 0, 0, 0.05) 1px,
-				rgba(0, 0, 0, 0.05) 3px
+				transparent 0px,
+				transparent 5px,
+				var(--stroke-dark, rgba(0, 0, 0, 0.05)) 5px,
+				var(--stroke-dark, rgba(0, 0, 0, 0.05)) 6px
 			);
 		background-attachment: fixed;
 		color: var(--scroll-fg, #f2f2f5);

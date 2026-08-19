@@ -46,10 +46,28 @@ function pickTextIsDark(bgLuminance: number): boolean {
 // like Home, that reads as "the whole tier list at once" rather than a
 // scroll journey. A long page's natural per-tier distance
 // (scrollableHeight / 8) is usually already bigger than this floor, so it
-// keeps stretching to fill the page as before; short pages clamp to this
-// minimum instead and simply don't reach the later tiers by the time the
-// page ends, rather than being compressed to fit.
+// keeps stretching to fill the page as before; short pages clamp toward
+// this minimum instead.
 const MIN_PX_PER_TIER = 300;
+
+// Every page must reach at least this many tiers (LV counts as the 1st) by
+// the time you hit the bottom, no matter how short the page is - even a
+// near-empty page still shows real movement through LV/MV/HV rather than
+// barely nudging off LV. This can only *shrink* the 300px floor above (for
+// very short pages), never grow it - a page long enough to hit the floor
+// naturally already clears this minimum.
+const MIN_TIERS_PER_PAGE = 3;
+
+// Three intensity presets for the blocky brushed-metal texture (see
+// BaseLayout.astro's --stroke-light/--stroke-dark), cycled one-per-tier so
+// the texture visibly alternates as you scroll instead of staying static:
+// normal -> lighter -> darker -> normal -> ... (LV=normal, MV=lighter,
+// HV=darker, EV=normal, ...).
+const STROKE_PRESETS = [
+	{ light: 'rgba(255, 255, 255, 0.05)', dark: 'rgba(0, 0, 0, 0.05)' }, // normal
+	{ light: 'rgba(255, 255, 255, 0.11)', dark: 'rgba(0, 0, 0, 0.03)' }, // lighter
+	{ light: 'rgba(255, 255, 255, 0.03)', dark: 'rgba(0, 0, 0, 0.11)' }, // darker
+];
 
 export function initTierScroll(): void {
 	const body = document.body;
@@ -58,7 +76,10 @@ export function initTierScroll(): void {
 	function update() {
 		const scrollable = document.documentElement.scrollHeight - window.innerHeight;
 		const naturalPxPerTier = scrollable / (STOPS.length - 1);
-		const pxPerTier = Math.max(MIN_PX_PER_TIER, naturalPxPerTier);
+		// Shrink the floor (never grow it) so a very short page still covers
+		// MIN_TIERS_PER_PAGE tiers by its own bottom.
+		const pxPerTierForMinimum = scrollable / (MIN_TIERS_PER_PAGE - 1);
+		const pxPerTier = Math.max(Math.min(MIN_PX_PER_TIER, pxPerTierForMinimum), naturalPxPerTier);
 		const segment = pxPerTier > 0 ? Math.min(window.scrollY / pxPerTier, STOPS.length - 1) : 0;
 		const idx = Math.min(Math.floor(segment), STOPS.length - 2);
 		const t = segment - idx;
@@ -78,6 +99,10 @@ export function initTierScroll(): void {
 			'--scroll-border',
 			useDarkText ? 'rgba(0, 0, 0, 0.25)' : 'rgba(255, 255, 255, 0.25)',
 		);
+
+		const preset = STROKE_PRESETS[idx % STROKE_PRESETS.length];
+		body.style.setProperty('--stroke-light', preset.light);
+		body.style.setProperty('--stroke-dark', preset.dark);
 	}
 
 	function onScroll() {

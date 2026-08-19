@@ -72,21 +72,34 @@ before being built. See "Decision history" below.
     the 3:1 large-text/UI-component minimum, and transient rather than a
     static reading position. Judged acceptable rather than adding a third
     text-color tier for one brief transitional moment.
-  - **Per-tier scroll distance has a floor (2026-08-19)**: originally
-    mapped a page's full scrollable height to all 8 transitions always,
-    which crammed the whole LV→UHV journey into a handful of pixels on
-    short pages (e.g. Home) — felt like "all tiers at once," not a scroll
-    journey. Fixed with `MIN_PX_PER_TIER = 300` in `tierScroll.ts`: actual
-    per-tier pixel distance is `max(300, scrollableHeight / 8)`. Long
-    pages keep stretching naturally to reach UHV exactly at the bottom
-    (unchanged behavior); short pages clamp to the 300px floor and simply
-    don't reach the later tiers by the time the page ends, rather than
-    being compressed to fit.
-  - **Metallic texture (2026-08-19)**: body background is no longer a flat
-    `--scroll-bg` fill — a subtle fixed-attachment radial "sheen" +
-    diagonal repeating-stripe texture (both low-alpha, blend over whatever
-    color is underneath) gives a brushed-metal read across the whole tier
-    range without needing per-tier art.
+  - **Per-tier scroll distance has a floor, plus a per-page minimum
+    (2026-08-19)**: originally mapped a page's full scrollable height to
+    all 8 transitions always, cramming the whole LV→UHV journey into a
+    handful of pixels on short pages (e.g. Home). Fixed in two layers,
+    both in `tierScroll.ts`: `MIN_PX_PER_TIER = 300` floors how short one
+    transition can be (`pxPerTier = max(300, scrollableHeight / 8)`), and
+    `MIN_TIERS_PER_PAGE = 3` additionally *shrinks* that floor (never
+    grows it) on very short pages so every page reaches at least 3 tiers
+    by its own bottom, no matter how little scrollable height it has —
+    verified in Node before shipping down to a 50px-tall page still
+    landing exactly on tier index 2 (HV). Long pages are unaffected,
+    still stretching naturally to reach UHV exactly at the bottom.
+  - **Metallic texture: blocky pattern modeled on the actual casing
+    screenshots, cycling 3 intensities per tier (2026-08-19, revised same
+    day)**: first version used a generic diagonal stripe pattern that
+    didn't actually resemble the owner's reference screenshots. Replaced
+    with a blocky grid texture (horizontal + vertical repeating strokes,
+    closer to the "maze" look in the casing textures) plus a diagonal
+    grain accent, all built from two CSS custom properties
+    (`--stroke-light`/`--stroke-dark`) so one gradient recipe in
+    `BaseLayout.astro` serves three intensity presets defined in
+    `tierScroll.ts` (`STROKE_PRESETS`: normal/lighter/darker), cycled
+    `idx % 3` as you cross each tier boundary — LV=normal, MV=lighter,
+    HV=darker, EV=normal, and so on. Changes as a hard cut at each tier
+    boundary (custom properties feeding a `background-image` don't
+    animate via the existing `transition:` rule, which only covers
+    `background-color`) - reads as a deliberate rhythm rather than a
+    glitch, so left as-is rather than adding animation complexity for it.
 - **Hosting**: a Cloudflare Worker with static assets (via the
   `@astrojs/cloudflare` adapter + `wrangler.jsonc`'s `assets` block) — not
   the older Cloudflare Pages git-integration product. Deploy is just
