@@ -41,9 +41,9 @@ const { title, description = 'BuildTech: New Horizons — base building for Greg
 		/* Defaults match the LV stop, so there's no flash before JS runs. */
 		background-color: var(--scroll-bg, #34333f);
 		/* Brushed-metal texture, modeled on the blocky/maze-like pattern in the
-		   owner's own casing screenshots: a soft specular sheen, a fine
-		   crosshatch of two opposing diagonal strokes (the "blocky" read),
-		   plus a third diagonal accent line for extra grain.
+		   owner's own casing screenshots: a soft specular sheen plus one
+		   diagonal repeating stroke whose bands themselves alternate light/
+		   dark (single consistent angle, not a crosshatch).
 		   --stroke-light/--stroke-dark are set by tierScroll.ts and cycle
 		   through three intensity presets (normal/lighter/darker) as you
 		   scroll through tiers - one shared gradient recipe, just re-tinted,
@@ -53,25 +53,11 @@ const { title, description = 'BuildTech: New Horizons — base building for Greg
 		background-image:
 			radial-gradient(ellipse 120% 60% at 25% -10%, rgba(255, 255, 255, 0.12), transparent 55%),
 			repeating-linear-gradient(
-				45deg,
+				115deg,
 				var(--stroke-light, rgba(255, 255, 255, 0.05)) 0px,
 				var(--stroke-light, rgba(255, 255, 255, 0.05)) 2px,
-				transparent 2px,
-				transparent 6px
-			),
-			repeating-linear-gradient(
-				135deg,
-				var(--stroke-dark, rgba(0, 0, 0, 0.05)) 0px,
 				var(--stroke-dark, rgba(0, 0, 0, 0.05)) 2px,
-				transparent 2px,
-				transparent 6px
-			),
-			repeating-linear-gradient(
-				115deg,
-				transparent 0px,
-				transparent 5px,
-				var(--stroke-dark, rgba(0, 0, 0, 0.05)) 5px,
-				var(--stroke-dark, rgba(0, 0, 0, 0.05)) 6px
+				var(--stroke-dark, rgba(0, 0, 0, 0.05)) 4px
 			);
 		background-attachment: fixed;
 		color: var(--scroll-fg, #f2f2f5);
