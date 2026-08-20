@@ -84,22 +84,26 @@ before being built. See "Decision history" below.
     verified in Node before shipping down to a 50px-tall page still
     landing exactly on tier index 2 (HV). Long pages are unaffected,
     still stretching naturally to reach UHV exactly at the bottom.
-  - **Metallic texture: blocky pattern modeled on the actual casing
-    screenshots, cycling 3 intensities per tier (2026-08-19, revised same
-    day)**: first version used a generic diagonal stripe pattern that
-    didn't actually resemble the owner's reference screenshots. Replaced
-    with a blocky grid texture (horizontal + vertical repeating strokes,
-    closer to the "maze" look in the casing textures) plus a diagonal
-    grain accent, all built from two CSS custom properties
-    (`--stroke-light`/`--stroke-dark`) so one gradient recipe in
-    `BaseLayout.astro` serves three intensity presets defined in
-    `tierScroll.ts` (`STROKE_PRESETS`: normal/lighter/darker), cycled
-    `idx % 3` as you cross each tier boundary — LV=normal, MV=lighter,
-    HV=darker, EV=normal, and so on. Changes as a hard cut at each tier
-    boundary (custom properties feeding a `background-image` don't
-    animate via the existing `transition:` rule, which only covers
-    `background-color`) - reads as a deliberate rhythm rather than a
-    glitch, so left as-is rather than adding animation complexity for it.
+  - **Metallic texture: single-angle diagonal stroke, 3 tones derived from
+    the live tier color (2026-08-19, settled after several rounds of
+    owner feedback)**: went through blocky-grid and crosshatch-diagonal
+    versions first; owner wanted one consistent stroke angle (not two
+    crossed), with the stroke bands alternating through three *colors* —
+    the current tier's own color, plus a lighter and darker shade of that
+    same color — rather than a fixed generic light/dark overlay. Final
+    design: `tierScroll.ts`'s `update()` computes `--stroke-base` (the
+    exact interpolated tier color), `--stroke-lighter`/`--stroke-darker`
+    (same color mixed 18% toward white/black via the `shade()` helper)
+    every scroll frame; `BaseLayout.astro`'s single `115deg` repeating
+    gradient cycles through all three as opaque 6px bands (18px repeat).
+    18% mix was chosen deliberately conservative, not just picked: these
+    bands are fully opaque and body text sits directly on them (no
+    backing panel), so a stronger shift would have undercut the contrast
+    work above for whichever band lands under a given line of text —
+    verified in Node before shipping (all 9 tiers' base/lighter/darker
+    bands land at 4.12–12.67:1; only one edge case, ZPM's lighter band at
+    4.12:1, dips just under the strict 4.5:1 AA target, still comfortably
+    above the 3:1 large-text minimum).
 - **Hosting**: a Cloudflare Worker with static assets (via the
   `@astrojs/cloudflare` adapter + `wrangler.jsonc`'s `assets` block) — not
   the older Cloudflare Pages git-integration product. Deploy is just

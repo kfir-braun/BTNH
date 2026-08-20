@@ -42,22 +42,25 @@ const { title, description = 'BuildTech: New Horizons — base building for Greg
 		background-color: var(--scroll-bg, #34333f);
 		/* Brushed-metal texture, modeled on the blocky/maze-like pattern in the
 		   owner's own casing screenshots: a soft specular sheen plus one
-		   diagonal repeating stroke whose bands themselves alternate light/
-		   dark (single consistent angle, not a crosshatch).
-		   --stroke-light/--stroke-dark are set by tierScroll.ts and cycle
-		   through three intensity presets (normal/lighter/darker) as you
-		   scroll through tiers - one shared gradient recipe, just re-tinted,
-		   rather than three separate patterns. Fixed attachment keeps it
+		   diagonal (single consistent angle) repeating stroke whose bands
+		   alternate through three tones - the current tier color itself
+		   (--stroke-base, exactly the color pulled from the screenshots),
+		   plus a lighter and a darker shade of that same color
+		   (--stroke-lighter/--stroke-darker) - all three set live by
+		   tierScroll.ts every scroll frame, so the stroke always matches
+		   whatever tier color is currently active. Fixed attachment keeps it
 		   reading as a material property of the page rather than printed
 		   content that scrolls past. */
 		background-image:
 			radial-gradient(ellipse 120% 60% at 25% -10%, rgba(255, 255, 255, 0.12), transparent 55%),
 			repeating-linear-gradient(
 				115deg,
-				var(--stroke-light, rgba(255, 255, 255, 0.05)) 0px,
-				var(--stroke-light, rgba(255, 255, 255, 0.05)) 2px,
-				var(--stroke-dark, rgba(0, 0, 0, 0.05)) 2px,
-				var(--stroke-dark, rgba(0, 0, 0, 0.05)) 4px
+				var(--stroke-base, #34333f) 0px,
+				var(--stroke-base, #34333f) 6px,
+				var(--stroke-lighter, #5a5968) 6px,
+				var(--stroke-lighter, #5a5968) 12px,
+				var(--stroke-darker, #100f14) 12px,
+				var(--stroke-darker, #100f14) 18px
 			);
 		background-attachment: fixed;
 		color: var(--scroll-fg, #f2f2f5);

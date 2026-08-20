@@ -58,16 +58,13 @@ const MIN_PX_PER_TIER = 300;
 // naturally already clears this minimum.
 const MIN_TIERS_PER_PAGE = 3;
 
-// Three intensity presets for the blocky brushed-metal texture (see
-// BaseLayout.astro's --stroke-light/--stroke-dark), cycled one-per-tier so
-// the texture visibly alternates as you scroll instead of staying static:
-// normal -> lighter -> darker -> normal -> ... (LV=normal, MV=lighter,
-// HV=darker, EV=normal, ...).
-const STROKE_PRESETS = [
-	{ light: 'rgba(255, 255, 255, 0.05)', dark: 'rgba(0, 0, 0, 0.05)' }, // normal
-	{ light: 'rgba(255, 255, 255, 0.11)', dark: 'rgba(0, 0, 0, 0.03)' }, // lighter
-	{ light: 'rgba(255, 255, 255, 0.03)', dark: 'rgba(0, 0, 0, 0.11)' }, // darker
-];
+// Mixes an RGB color toward white (amount > 0) or black (amount < 0).
+function shade(r: number, g: number, b: number, amount: number): string {
+	const target = amount > 0 ? 255 : 0;
+	const a = Math.abs(amount);
+	const mix = (c: number) => Math.round(lerp(c, target, a));
+	return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
+}
 
 export function initTierScroll(): void {
 	const body = document.body;
@@ -100,9 +97,18 @@ export function initTierScroll(): void {
 			useDarkText ? 'rgba(0, 0, 0, 0.25)' : 'rgba(255, 255, 255, 0.25)',
 		);
 
-		const preset = STROKE_PRESETS[idx % STROKE_PRESETS.length];
-		body.style.setProperty('--stroke-light', preset.light);
-		body.style.setProperty('--stroke-dark', preset.dark);
+		// Three stroke tones, all derived from the *current* interpolated tier
+		// color (the exact color pulled from the owner's screenshots), not a
+		// generic black/white overlay: the color itself, a lighter shade, and
+		// a darker shade - alternating as the three bands of the diagonal
+		// stroke pattern below.
+		// Kept moderate (not a bigger swing) since these bands are fully
+		// opaque and text can sit directly on top of them - too strong a
+		// shift would undercut the contrast work above for whichever band
+		// happens to be under a given line of text.
+		body.style.setProperty('--stroke-base', `rgb(${r}, ${g}, ${b})`);
+		body.style.setProperty('--stroke-lighter', shade(r, g, b, 0.18));
+		body.style.setProperty('--stroke-darker', shade(r, g, b, -0.18));
 	}
 
 	function onScroll() {
