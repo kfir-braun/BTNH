@@ -110,30 +110,9 @@ before being built. See "Decision history" below.
     custom property to the *nearest* tier's texture every scroll frame
     (`Math.round(segment)`, not the floor — matches whichever tier's color
     the current blend is actually closer to); `BaseLayout.astro` tiles it
-    with `image-rendering: pixelated` so the upscale stays crisp instead of
+    at `48px 48px` (a 3x upscale of the native 16x16 pixel art) with
+    `image-rendering: pixelated` so the upscale stays crisp instead of
     blurring, layered under the existing specular-sheen radial gradient.
-  - **Mirror-tiled to remove the repeat "border" (2026-08-19, owner
-    feedback: "any way you can make seem like one big texture? basically no
-    borders?")**: tiling the raw 16x16 texture directly (at `48px 48px`)
-    read as an obvious grid of identical little icons — every repeat
-    boundary is visually a "seam" because the eye immediately spots the
-    same small motif recurring. Fixed with the standard seamless-tiling
-    trick: `public/textures/casings-mirrored/{tier}.png` is a generated
-    32x32 tile per voltage tier, built from 4 copies of the raw 16x16
-    texture arranged as original / horizontally-flipped / vertically-
-    flipped / both-flipped quadrants (via `sharp`, `.flip()`/`.flop()` +
-    `composite()` — script isn't checked into the repo, it's a one-off in
-    the local temp scratch dir, rerun it if a tier's source texture ever
-    changes). Because mirrored quadrants are pixel-identical at their
-    shared edges by construction, every adjacent repeat lines up exactly —
-    no visible seam — and the repeat period doubles (32px source instead of
-    16px), so even the outer macro-tile boundary is far less frequent and
-    far less obvious. `tiers.ts`'s `texture` field points at
-    `casings-mirrored/`, not the raw `casings/` source (kept on disk as the
-    input for regeneration, and as the literal texture the credit footer
-    refers to); `BaseLayout.astro`'s `background-size` is `96px 96px` (3x
-    upscale of the 32x32 mirrored tile — same visual block scale as before,
-    since the raw texture was previously shown at `48px` = 3x of 16px).
     Attribution (owner-requested: "i also want to credit any work that
     wasnt mine... at the bottom the home page") lives in a footer on
     `src/pages/index.astro`, linking the author's name
