@@ -118,6 +118,26 @@ before being built. See "Decision history" below.
     `src/pages/index.astro`, linking the author's name
     (ULSTICK/GregTechRefreshed) straight to the GitHub repo per the
     owner's explicit ask, not just naming it in prose.
+  - **Removing the tile "border" — cropped, not mirrored (2026-08-19,
+    two rounds of owner feedback)**: first tried mirror-tiling (a 32x32
+    quad-mirrored tile per texture, `casings-mirrored/`) so every repeat
+    edge lined up — owner said "nope revert back," reverted via
+    `git revert` rather than a manual undo (kept clean history). Root
+    cause turned out to be simpler once inspected directly: dumped
+    `lv.png`'s raw pixel grid in Node and found the outer ~2-3px of every
+    texture is a distinctly *darker* border/bevel (`#3d3934`/`#4a4641` vs.
+    an interior around `#6d6963`-`#85807b`) — that's what reads as a hard
+    line every time the tile repeats, not a lack of edge-matching per se.
+    Owner's actual ask: "zoom in a few pixels so that dark borders wont be
+    there... about three pixels less." Fixed by cropping 3px off each
+    edge of the raw 16x16 (→ 10x10) instead of mirroring — `public/
+    textures/casings-zoomed/{tier}.png`, built via a `sharp` `.extract()`
+    script (same local temp-dir pattern as the mirror attempt, not
+    checked into the repo — rerun if a source texture changes). `tiers.ts`
+    points at `casings-zoomed/`; `BaseLayout.astro` keeps the same `48px
+    48px` on-screen tile size as before (just fewer source pixels
+    stretched to fill it), so the effect genuinely reads as "zoomed in,"
+    matching how the owner described it.
 - **Hosting**: a Cloudflare Worker with static assets (via the
   `@astrojs/cloudflare` adapter + `wrangler.jsonc`'s `assets` block) — not
   the older Cloudflare Pages git-integration product. Deploy is just

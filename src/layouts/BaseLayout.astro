@@ -41,16 +41,22 @@ const { title, description = 'BuildTech: New Horizons — base building for Greg
 		/* Defaults match the LV stop, so there's no flash before JS runs. */
 		background-color: var(--scroll-bg, #34333f);
 		/* Real in-game casing texture (see tiers.ts / Home page credit) as the
-		   background, tiled at a chunky upscale of its native 16x16 so it
-		   reads as blocky material rather than a smear, plus a soft specular
-		   sheen on top. --tier-texture is swapped by tierScroll.ts every
+		   background, tiled at a chunky upscale so it reads as blocky
+		   material rather than a smear, plus a soft specular sheen on top.
+		   Uses the zoomed-in 10x10 crop (see tiers.ts) rather than the raw
+		   16x16 texture - the raw texture's outer 2-3px is a noticeably
+		   darker border/bevel, which reads as a hard grid line every time
+		   the tile repeats. Cropping that off (same 48px on-screen tile
+		   size, just fewer source pixels stretched to fill it - i.e.
+		   genuinely "zoomed in") makes repeats read as one continuous
+		   casing surface. --tier-texture is swapped by tierScroll.ts every
 		   scroll frame to match whichever tier is currently active.
 		   image-rendering: pixelated keeps the upscale crisp instead of
-		   blurry. Fixed attachment keeps it reading as a material property of
-		   the page rather than printed content that scrolls past. */
+		   blurry. Fixed attachment keeps it reading as a material property
+		   of the page rather than printed content that scrolls past. */
 		background-image:
 			radial-gradient(ellipse 120% 60% at 25% -10%, rgba(255, 255, 255, 0.12), transparent 55%),
-			var(--tier-texture, url(/textures/casings/lv.png));
+			var(--tier-texture, url(/textures/casings-zoomed/lv.png));
 		background-repeat: no-repeat, repeat;
 		background-size:
 			100% 100%,
