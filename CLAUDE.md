@@ -124,10 +124,12 @@ before being built. See "Decision history" below.
     edge lined up — owner said "nope revert back," reverted via
     `git revert` rather than a manual undo (kept clean history). Root
     cause turned out to be simpler once inspected directly: dumped
-    `lv.png`'s raw pixel grid in Node and found the outer ~2-3px of every
-    texture is a distinctly *darker* border/bevel (`#3d3934`/`#4a4641` vs.
-    an interior around `#6d6963`-`#85807b`) — that's what reads as a hard
-    line every time the tile repeats, not a lack of edge-matching per se.
+    `lv.png`'s raw pixel grid in Node and found the outermost ring of
+    every texture (column 0, column 15, row 0, row 15 — about 1px wide,
+    not the 2-3px first assumed) is a distinctly *darker* border/bevel
+    (`#3d3934`/`#4a4641` vs. an interior around `#6d6963`-`#85807b`) —
+    that's what reads as a hard line every time the tile repeats, not a
+    lack of edge-matching per se.
     Owner's actual ask: "zoom in a few pixels so that dark borders wont be
     there... about three pixels less." Fixed by cropping 3px off each
     edge of the raw 16x16 (→ 10x10) instead of mirroring — `public/
@@ -138,6 +140,30 @@ before being built. See "Decision history" below.
     48px` on-screen tile size as before (just fewer source pixels
     stretched to fill it), so the effect genuinely reads as "zoomed in,"
     matching how the owner described it.
+  - **Crop amount corrected: 3px was too aggressive, 2px verified best
+    (2026-08-19, owner: "not aligned, making every row not match as a
+    column, maybe shift it a little so that it matches")**: the 3px crop
+    wasn't just removing the dark border, it was cutting 6 total columns/
+    rows of real pattern content out of each 16x16 texture and gluing the
+    remaining edges together — since the interior pattern isn't
+    perfectly self-similar at that cut, this reads as a visible seam/
+    misalignment every repeat, worse than the original grid-border look
+    it was meant to fix. Diagnosed by re-inspecting the raw pixel grid:
+    the actual dark border ring is only ~1-2px wide, not 3px — cropping
+    3px was overcorrecting. Verified numerically rather than re-guessing:
+    wrote a script comparing every candidate crop offset/width's "seam
+    error" (summed color difference between the two source columns/rows
+    that become tile-adjacent after cropping) across all 9 tiers. Result:
+    2px per edge (16x16 → 12x12, offset 2 on both axes for every single
+    tier — not just close, exactly optimal in every case) has
+    substantially lower seam error than the previous 3px/10x10 crop for
+    7 of 9 tiers (roughly half the error for ev/zpm/uv/uhv). Bonus fix
+    that likely also contributed to the reported misalignment: 10→48px
+    was a 4.8x (non-integer) scale, prone to browser subpixel rounding
+    drift across repeats; 12→48px is a clean 4x integer scale instead.
+    `casings-zoomed/` regenerated at 2px crop; `BaseLayout.astro`'s `48px
+    48px` background-size unchanged (still the same on-screen tile size,
+    just a cleaner source-to-screen scale ratio).
 - **Hosting**: a Cloudflare Worker with static assets (via the
   `@astrojs/cloudflare` adapter + `wrangler.jsonc`'s `assets` block) — not
   the older Cloudflare Pages git-integration product. Deploy is just
