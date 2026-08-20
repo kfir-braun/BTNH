@@ -58,14 +58,6 @@ const MIN_PX_PER_TIER = 300;
 // naturally already clears this minimum.
 const MIN_TIERS_PER_PAGE = 3;
 
-// Mixes an RGB color toward white (amount > 0) or black (amount < 0).
-function shade(r: number, g: number, b: number, amount: number): string {
-	const target = amount > 0 ? 255 : 0;
-	const a = Math.abs(amount);
-	const mix = (c: number) => Math.round(lerp(c, target, a));
-	return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
-}
-
 export function initTierScroll(): void {
 	const body = document.body;
 	let ticking = false;
@@ -97,18 +89,12 @@ export function initTierScroll(): void {
 			useDarkText ? 'rgba(0, 0, 0, 0.25)' : 'rgba(255, 255, 255, 0.25)',
 		);
 
-		// Three stroke tones, all derived from the *current* interpolated tier
-		// color (the exact color pulled from the owner's screenshots), not a
-		// generic black/white overlay: the color itself, a lighter shade, and
-		// a darker shade - alternating as the three bands of the diagonal
-		// stroke pattern below.
-		// Kept moderate (not a bigger swing) since these bands are fully
-		// opaque and text can sit directly on top of them - too strong a
-		// shift would undercut the contrast work above for whichever band
-		// happens to be under a given line of text.
-		body.style.setProperty('--stroke-base', `rgb(${r}, ${g}, ${b})`);
-		body.style.setProperty('--stroke-lighter', shade(r, g, b, 0.18));
-		body.style.setProperty('--stroke-darker', shade(r, g, b, -0.18));
+		// Real per-tier casing texture (see tiers.ts) as the background,
+		// switched at the nearest tier rather than the floor of the segment -
+		// so the texture matches whichever tier's color the current blend is
+		// actually closer to, not whichever tier we most recently left.
+		const textureIdx = Math.min(Math.round(segment), TIERS.length - 1);
+		body.style.setProperty('--tier-texture', `url(${TIERS[textureIdx].texture})`);
 	}
 
 	function onScroll() {

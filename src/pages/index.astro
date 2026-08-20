@@ -17,4 +17,27 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 		<li><a href="/showcase">Showcase</a> — community build screenshots</li>
 		<li><a href="/qna">Q&amp;A</a> — answered player questions</li>
 	</ul>
+	<footer class="credits">
+		<p>
+			Voltage-tier casing textures used in the site background are from{' '}
+			<a href="https://github.com/ULSTICK/GregTechRefreshed" target="_blank" rel="noopener noreferrer">
+				ULSTICK/GregTechRefreshed
+			</a>, licensed MIT.
+		</p>
+	</footer>
 </BaseLayout>
+
+<style>
+	.credits {
+		margin-top: 3rem;
+		padding-top: 1rem;
+		border-top: 1px solid var(--scroll-border, rgba(255, 255, 255, 0.25));
+		font-size: 0.85rem;
+		color: var(--scroll-fg-dim, #c7c7cf);
+		transition: border-color 0.15s linear, color 0.15s linear;
+	}
+	.credits a {
+		color: inherit;
+		text-decoration: underline;
+	}
+</style>

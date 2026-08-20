@@ -84,26 +84,40 @@ before being built. See "Decision history" below.
     verified in Node before shipping down to a 50px-tall page still
     landing exactly on tier index 2 (HV). Long pages are unaffected,
     still stretching naturally to reach UHV exactly at the bottom.
-  - **Metallic texture: single-angle diagonal stroke, 3 tones derived from
-    the live tier color (2026-08-19, settled after several rounds of
-    owner feedback)**: went through blocky-grid and crosshatch-diagonal
-    versions first; owner wanted one consistent stroke angle (not two
-    crossed), with the stroke bands alternating through three *colors* —
-    the current tier's own color, plus a lighter and darker shade of that
-    same color — rather than a fixed generic light/dark overlay. Final
-    design: `tierScroll.ts`'s `update()` computes `--stroke-base` (the
-    exact interpolated tier color), `--stroke-lighter`/`--stroke-darker`
-    (same color mixed 18% toward white/black via the `shade()` helper)
-    every scroll frame; `BaseLayout.astro`'s single `115deg` repeating
-    gradient cycles through all three as opaque 6px bands (18px repeat).
-    18% mix was chosen deliberately conservative, not just picked: these
-    bands are fully opaque and body text sits directly on them (no
-    backing panel), so a stronger shift would have undercut the contrast
-    work above for whichever band lands under a given line of text —
-    verified in Node before shipping (all 9 tiers' base/lighter/darker
-    bands land at 4.12–12.67:1; only one edge case, ZPM's lighter band at
-    4.12:1, dips just under the strict 4.5:1 AA target, still comfortably
-    above the 3:1 large-text minimum).
+  - **Metallic texture, superseded (2026-08-19)**: earlier versions used a
+    CSS-generated single-angle diagonal stroke (`repeating-linear-gradient`)
+    cycling through 3 tones derived from the live tier color
+    (`--stroke-base`/`--stroke-lighter`/`--stroke-darker`, via a `shade()`
+    helper mixing 18% toward white/black). Went through blocky-grid and
+    crosshatch-diagonal attempts first before landing on this — see git
+    history if that approach is ever needed again. Replaced same-day by
+    real textures, below.
+  - **Real per-tier casing textures, not generated (2026-08-19, owner
+    request after seeing the generated stroke: "if i find a texture for the
+    casing can you make it the background instead?")**: owner found
+    [ULSTICK/GregTechRefreshed](https://github.com/ULSTICK/GregTechRefreshed)
+    on GitHub (MIT licensed) and asked for each tier's real `side.png`
+    casing texture to be used as the scrolling background in place of the
+    generated stroke pattern. Textures live at
+    `public/textures/casings/{lv,mv,hv,ev,iv,luv,zpm,uv,uhv}.png`
+    (downloaded via `gh api repos/ULSTICK/GregTechRefreshed/contents/...`
+    + base64-decode), referenced per-tier via a `texture` field on each
+    entry in `src/lib/tiers.ts`. UHV's source file was a 16x32 2-frame
+    animation (confirmed via its `side.png.mcmeta` sidecar on GitHub, the
+    Minecraft animation-metadata convention) — cropped to the first 16x16
+    frame with `sharp` before adding; the other 8 tiers were already
+    16x16. `tierScroll.ts`'s `update()` sets a `--tier-texture: url(...)`
+    custom property to the *nearest* tier's texture every scroll frame
+    (`Math.round(segment)`, not the floor — matches whichever tier's color
+    the current blend is actually closer to); `BaseLayout.astro` tiles it
+    at `48px 48px` (a 3x upscale of the native 16x16 pixel art) with
+    `image-rendering: pixelated` so the upscale stays crisp instead of
+    blurring, layered under the existing specular-sheen radial gradient.
+    Attribution (owner-requested: "i also want to credit any work that
+    wasnt mine... at the bottom the home page") lives in a footer on
+    `src/pages/index.astro`, linking the author's name
+    (ULSTICK/GregTechRefreshed) straight to the GitHub repo per the
+    owner's explicit ask, not just naming it in prose.
 - **Hosting**: a Cloudflare Worker with static assets (via the
   `@astrojs/cloudflare` adapter + `wrangler.jsonc`'s `assets` block) — not
   the older Cloudflare Pages git-integration product. Deploy is just
